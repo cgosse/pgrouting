@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  */
-#ifndef _BDASTAR_H
-#define _BDASTAR_H
+#ifndef _BDASTARBULK_H
+#define _BDASTARBULK_H
 
 #include "postgres.h"
 
@@ -64,15 +64,7 @@ typedef struct routeset
 extern "C"
 #endif
 
-  int bdastar_wrapper(edge_astar_t *edges, unsigned int count, int maxnode,
-                  int source_vertex_id, int target_vertex_id,
-                  bool directed, bool has_reverse_cost,
-                  path_element_t **path, int *path_count, char **err_msg);
-#ifdef __cplusplus
-extern "C"
-#endif
-
-  int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxnode,
+int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxnode,
                   routeset_t *routes, int route_count,
                   bool directed, bool has_reverse_cost,
                   path_element_bulk_t **path, int *path_count, char **err_msg);

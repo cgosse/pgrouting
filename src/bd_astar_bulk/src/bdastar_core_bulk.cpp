@@ -45,7 +45,7 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 	DBG("\n\ntrying the C++ code\n");
 	try {
 		// instantiate our class to hold the graph, we'll copy it for each route
-		BiDirAStarBulk base;
+		BiDirAStarBulk base(maxNode);
 
 		DBG("constructing the graph\n");
 		DBG("edges pointer %i\n", edges);
@@ -86,7 +86,9 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 			}
 		}
 		// allocate memory for and return the resulting multi-paths
-		*path = (path_element_bulk_t *) malloc(sizeof(path_element_bulk_t) * (path_row_count + 1));
+		//  we apparently don't use palloc here, since it doesn't work
+		DBG("allocating result memory for %i path rows", path_row_count + 1);
+		*path = (path_element_bulk_t *) malloc( (path_row_count + 1) * sizeof(path_element_bulk_t) );
 		*path_count = path_row_count;
 
 		for (int r = 0; r < route_count; ++r) {
@@ -113,6 +115,6 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 		return res;
 	else
 		return EXIT_SUCCESS;
-	}
+}
 
 

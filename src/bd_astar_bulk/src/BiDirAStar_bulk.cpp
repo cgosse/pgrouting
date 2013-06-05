@@ -33,6 +33,13 @@ BiDirAStarBulk::BiDirAStarBulk(void)
 {
 }
 
+BiDirAStarBulk::BiDirAStarBulk(int maxNode) :
+	max_node_id(maxNode), max_edge_id(-1) 
+{
+	initall(maxNode);
+}
+
+
 BiDirAStarBulk::~BiDirAStarBulk(void)
 {
 	// any reason not to do this?
@@ -390,11 +397,13 @@ bool BiDirAStarBulk::construct_graph(edge_astar_t* edges, unsigned int edge_coun
 	DBG("last edge source now %i\n", edges[edge_count - 1].source);
 	DBG("fifth edge id now %i\n", edges[4].id);
 	DBG("last edge id now %i\n", edges[edge_count - 1].id);
-	max_node_id = maxNode;
-	max_edge_id = -1;
+	
+	// do these with a constructor
+	//max_node_id = maxNode;
+	//max_edge_id = -1;
 
 	// allocate memory
-	initall(maxNode);
+	//initall(maxNode);
 
 	int i;
 	// Create a dummy node for building the node structure
@@ -405,12 +414,13 @@ bool BiDirAStarBulk::construct_graph(edge_astar_t* edges, unsigned int edge_coun
 	// Insert the dummy node into the node list. This acts as place holder. Also change the nodeId so that nodeId and node index in the vector are same.
 	// There may be some nodes here that does not appear in the edge list. The size of the list is upto maxNode which is equal to maximum node id.
 	// no reason that we can't fill the vector first, then assign id, though hard to say if faster
+	DBG("inserting %i dummy nodes", maxNode + 1);
 	m_vecNodeVector.assign(maxNode + 1, nodeInfo);
 	for(i = 0; i <= maxNode; ++i)
 	{
 		m_vecNodeVector.at(i).NodeID = i;
 	}
-	DBG("processed up to %i nodes, about to process %i edges\n", maxNode, edge_count);
+	DBG("processed up to %i nodes, about to process %i edges\n", maxNode + 1, edge_count);
 	m_vecEdgeVector.reserve(edge_count);
 	DBG("fifth edge id now %i\n", edges[4].id);
 	// Process each edge from the edge list and update the member data structures accordingly.

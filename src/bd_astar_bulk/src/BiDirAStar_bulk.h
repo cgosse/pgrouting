@@ -120,6 +120,7 @@ class BiDirAStarBulk
 {
 public:
 	BiDirAStarBulk(void);
+	BiDirAStarBulk(int);
 	~BiDirAStarBulk(void);
 	
 	int bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, unsigned int maxNode, 
