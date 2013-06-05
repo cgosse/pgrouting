@@ -27,8 +27,8 @@
 
 *****************************************************************************/
 
-#ifndef BIDIRASTAR_H
-#define BIDIRASTAR_H
+#ifndef BiDirAStarBulk_H
+#define BiDirAStarBulk_H
 
 #include <vector>
 #include <map>
@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "MinHeap.h"
+#include "MinHeapBulk.h"
 #include "bdastar_bulk.h"
 
 #define INF 1e15
@@ -116,14 +116,14 @@ typedef std::map<long,long> Long2LongMap;
 typedef std::vector<GraphNodeInfo> GraphNodeVector;
 
 
-class BiDirAStar
+class BiDirAStarBulk
 {
 public:
-	BiDirAStar(void);
-	~BiDirAStar(void);
+	BiDirAStarBulk(void);
+	~BiDirAStarBulk(void);
 	
-	int bidir_astar(edge_astar_t *edges, unsigned int edge_count, int maxNode, int start_vertex, int end_vertex,
-		path_element_t **path, int *path_count, char **err_msg, bool isBulk = false);
+	int bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, unsigned int maxNode, 
+			unsigned int start_vertex, unsigned int end_vertex, char **err_msg);
 
 	// these are public to call them early and pre-build the graph
 	std::vector <path_element_t> m_vecPath;
@@ -138,7 +138,7 @@ private:
 	void initall(int maxNode);
 	void deleteall();
 	//void explore(int cur_node, double cur_cost, int dir, std::priority_queue<PDI, std::vector<PDI>, std::greater<PDI> > &que);
-	void explore(int cur_node, double cur_cost, int dir, MinHeap &que);
+	void explore(int cur_node, double cur_cost, int dir, MinHeapBulk &que);
 	double getcost(int node_id, int dir);
 	void setcost(int node_id, int dir, double c);
 	void setparent(int node_id, int dir, int parnode, int paredge);

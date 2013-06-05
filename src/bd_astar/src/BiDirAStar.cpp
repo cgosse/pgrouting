@@ -414,6 +414,7 @@ bool BiDirAStar::construct_graph(edge_astar_t* edges, int edge_count, int maxNod
 
 	// Insert the dummy node into the node list. This acts as place holder. Also change the nodeId so that nodeId and node index in the vector are same.
 	// There may be some nodes here that does not appear in the edge list. The size of the list is upto maxNode which is equal to maximum node id.
+	m_vecNodeVector.reserve(maxNode + 1);
 	for(i = 0; i <= maxNode; i++)
 	{
 		nodeInfo.NodeID = i;

@@ -29,17 +29,17 @@
 
 #include "BiDirAStar_bulk.h"
 
-BiDirAStar::BiDirAStar(void)
+BiDirAStarBulk::BiDirAStarBulk(void)
 {
 }
 
-BiDirAStar::~BiDirAStar(void)
+BiDirAStarBulk::~BiDirAStarBulk(void)
 {
 	// any reason not to do this?
 	deleteall();
 }
 
-void BiDirAStar::init()
+void BiDirAStarBulk::init()
 {
 	//max_edge_id = 0;
 	//max_node_id = 0;
@@ -50,7 +50,7 @@ void BiDirAStar::init()
 	Initialization and allocation of memories.
 */
 
-void BiDirAStar::initall(int maxNode)
+void BiDirAStarBulk::initall(int maxNode)
 {
 	int i;
 	m_pFParent = new PARENT_PATH[maxNode + 1];
@@ -75,7 +75,7 @@ void BiDirAStar::initall(int maxNode)
 	Delete the allocated memories to avoid memory leak.
 */
 
-void BiDirAStar::deleteall()
+void BiDirAStarBulk::deleteall()
 {
 	delete [] m_pFParent;
 	delete [] m_pRParent;
@@ -87,7 +87,7 @@ void BiDirAStar::deleteall()
 	Get the current cost from source to the current node if direction is 1 else the cost to reach target from the current node.
 */
 
-double BiDirAStar::getcost(int node_id, int dir)
+double BiDirAStarBulk::getcost(int node_id, int dir)
 {
 	if(dir == 1)
 	{
@@ -100,7 +100,7 @@ double BiDirAStar::getcost(int node_id, int dir)
 }
 
 
-double BiDirAStar::dist(double x1, double y1, double x2, double y2)
+double BiDirAStarBulk::dist(double x1, double y1, double x2, double y2)
 {
 	double ret = fabs((x1 - x2) + fabs(y1 - y2));
 	//double ret = sqrt(x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
@@ -110,7 +110,7 @@ double BiDirAStar::dist(double x1, double y1, double x2, double y2)
 /*
 	Get the heuristic cost of the node depending on dir (1 for forward search and -1 for reverse search).
 */
-double BiDirAStar::gethcost(int node_id, int dir)
+double BiDirAStarBulk::gethcost(int node_id, int dir)
 {
 	if(dir == -1)
 	{
@@ -127,7 +127,7 @@ double BiDirAStar::gethcost(int node_id, int dir)
 */
 
 
-void BiDirAStar::setcost(int node_id, int dir, double c)
+void BiDirAStarBulk::setcost(int node_id, int dir, double c)
 {
 	if(dir == 1)
 	{
@@ -139,7 +139,7 @@ void BiDirAStar::setcost(int node_id, int dir, double c)
 	}
 }
 
-void BiDirAStar::setparent(int node_id, int dir, int parnode, int paredge)
+void BiDirAStarBulk::setparent(int node_id, int dir, int parnode, int paredge)
 {
 	if(dir == 1)
 	{
@@ -158,7 +158,7 @@ void BiDirAStar::setparent(int node_id, int dir, int parnode, int paredge)
 	So one need to recurse upto the source and then add the current node and edge to the list.
 */
 
-void BiDirAStar::fconstruct_path(int node_id)
+void BiDirAStarBulk::fconstruct_path(int node_id)
 {
 	if(m_pFParent[node_id].par_Node == -1)
 		return;
@@ -175,7 +175,7 @@ void BiDirAStar::fconstruct_path(int node_id)
 	and edge to the list and then recurse through the parent upto hitting a -1.
 */
 
-void BiDirAStar::rconstruct_path(int node_id)
+void BiDirAStarBulk::rconstruct_path(int node_id)
 {
 	path_element_t pt;
 	if(m_pRParent[node_id].par_Node == -1)
@@ -197,8 +197,8 @@ void BiDirAStar::rconstruct_path(int node_id)
 	que is also passed as parameter que. The current node and the current costs are also available as parameter.
 */
 
-//void BiDirAStar::explore(int cur_node, double cur_cost, int dir, std::priority_queue<PDI, std::vector<PDI>, std::greater<PDI> > &que)
-void BiDirAStar::explore(int cur_node, double cur_cost, int dir, MinHeap &que)
+//void BiDirAStarBulk::explore(int cur_node, double cur_cost, int dir, std::priority_queue<PDI, std::vector<PDI>, std::greater<PDI> > &que)
+void BiDirAStarBulk::explore(int cur_node, double cur_cost, int dir, MinHeapBulk &que)
 {
 	int i;
 	// Number of connected edges
@@ -283,16 +283,17 @@ void BiDirAStar::explore(int cur_node, double cur_cost, int dir, MinHeap &que)
 	node id. As we run node based exploration cost, parent etc will be based on maximam node id.
 */
 
-int BiDirAStar:: bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, int maxNode, 
-		int start_vertex, int end_vertex, char **err_msg)
+int BiDirAStarBulk:: bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, 
+		unsigned int maxNode, unsigned int start_vertex, unsigned int end_vertex, 
+		char **err_msg)
 {
 	m_lStartNodeId = start_vertex;
 	m_lEndNodeId = end_vertex;
 
 	int nodeCount = m_vecNodeVector.size();
 	
-	MinHeap fque(maxNode + 2);
-	MinHeap rque(maxNode + 2);
+	MinHeapBulk fque(maxNode + 2);
+	MinHeapBulk rque(maxNode + 2);
 	//std::priority_queue<PDI, std::vector<PDI>, std::greater<PDI> > fque;
 	//std::priority_queue<PDI, std::vector<PDI>, std::greater<PDI> > rque;
 	
@@ -374,21 +375,7 @@ int BiDirAStar:: bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, 
 		pelement.cost = 0.0;
 		m_vecPath.push_back(pelement);
 
-		// only push back to the pointers if we're only routing a single trip, do it later otherwise
-		if (! isBulk) {
-			// Transfer data path to path_element_t format and allocate memory and populate the pointer
-			*path = (path_element_t *) malloc(sizeof(path_element_t) * (m_vecPath.size() + 1));
-			*path_count = m_vecPath.size();
-
-			for(i = 0; i < *path_count; i++)
-			{
-				(*path)[i].vertex_id = m_vecPath[i].vertex_id;
-				(*path)[i].edge_id = m_vecPath[i].edge_id;
-				(*path)[i].cost = m_vecPath[i].cost;
-			}
-		}
 	}
-	deleteall();
 	return 0;
 }
 
@@ -397,17 +384,17 @@ int BiDirAStar:: bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, 
 	corresponding edge indices from edge list that connect this node with the adjacent nodes.
 */
 
-bool BiDirAStar::construct_graph(edge_astar_t* edges, unsigned int edge_count, unsigned int maxNode)
+bool BiDirAStarBulk::construct_graph(edge_astar_t* edges, unsigned int edge_count, unsigned int maxNode)
 {
 	DBG("edges pointer %i\n", edges);
 	DBG("last edge source now %i\n", edges[edge_count - 1].source);
 	DBG("fifth edge id now %i\n", edges[4].id);
 	DBG("last edge id now %i\n", edges[edge_count - 1].id);
-	//max_node_id = maxNode;
-	//max_edge_id = -1;
+	max_node_id = maxNode;
+	max_edge_id = -1;
 
 	// allocate memory
-	//initall(maxNode);
+	initall(maxNode);
 
 	int i;
 	// Create a dummy node for building the node structure
@@ -417,15 +404,11 @@ bool BiDirAStar::construct_graph(edge_astar_t* edges, unsigned int edge_count, u
 
 	// Insert the dummy node into the node list. This acts as place holder. Also change the nodeId so that nodeId and node index in the vector are same.
 	// There may be some nodes here that does not appear in the edge list. The size of the list is upto maxNode which is equal to maximum node id.
-	// no reason that we can't fill the vector first, then assign id
+	// no reason that we can't fill the vector first, then assign id, though hard to say if faster
 	m_vecNodeVector.assign(maxNode + 1, nodeInfo);
-
-	//m_vecNodeVector.reserve(maxNode + 1);
 	for(i = 0; i <= maxNode; ++i)
 	{
 		m_vecNodeVector.at(i).NodeID = i;
-		//nodeInfo.NodeID = i;
-		//m_vecNodeVector.push_back(nodeInfo);
 	}
 	DBG("processed up to %i nodes, about to process %i edges\n", maxNode, edge_count);
 	m_vecEdgeVector.reserve(edge_count);
@@ -433,9 +416,7 @@ bool BiDirAStar::construct_graph(edge_astar_t* edges, unsigned int edge_count, u
 	// Process each edge from the edge list and update the member data structures accordingly.
 	for(i = 0; i < edge_count; ++i)
 	{
-		//DBG("calling addEdge on edge %i\n", edges[i].id);
 		addEdge(edges[i]);
-		//DBG(" added the %ith edge\n", i);
 	}
 	DBG("added %i edges\n", edge_count);
 	return true;
@@ -446,7 +427,7 @@ bool BiDirAStar::construct_graph(edge_astar_t* edges, unsigned int edge_count, u
 	connectivity information needs to be updated.
 */
 
-bool BiDirAStar::addEdge(edge_astar_t edgeIn)
+bool BiDirAStarBulk::addEdge(edge_astar_t edgeIn)
 {
 	//DBG("Adding edge id %i \n", edgeIn.id);
 	long lTest;

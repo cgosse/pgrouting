@@ -48,9 +48,10 @@ Datum bidir_astar_shortest_path(PG_FUNCTION_ARGS);
 // The number of tuples to fetch from the SPI cursor at each iteration
 #define TUPLIMIT 1000
 
-#ifdef PG_MODULE_MAGIC
-PG_MODULE_MAGIC;
-#endif
+// this needs to be done once per library, assume somewhere else
+//#ifdef PG_MODULE_MAGIC
+//PG_MODULE_MAGIC;
+//#endif
 
 static char *
 text2char(text *in)
@@ -490,9 +491,6 @@ static int compute_shortest_path_astar_bulk(char* edge_sql, char* route_sql,
 
   DBG("Total %i tuples", edge_count);
 
-  profstop("extract", prof_extract);
-  profstart(prof_astar);
-
   DBG("Calling bidir_astar <%i>\n", edge_count);
   DBG("last edge source now %i\n", edges[edge_count - 1].source);
 
@@ -537,10 +535,6 @@ bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS)
       MemoryContext   oldcontext;
       int path_count = 0;
       int ret;
-
-      // XXX profiling messages are not thread safe
-      profstart(prof_total);
-      profstart(prof_extract);
 
       /* create a function context for cross-call persistence */
       funcctx = SRF_FIRSTCALL_INIT();

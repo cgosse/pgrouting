@@ -169,7 +169,6 @@ set(PGROUTING_INCLUDE_DIRECTORIES
     ${PGROUTING_SOURCE_DIR}/src/kdijkstra/src
     ${PGROUTING_SOURCE_DIR}/src/apsp_johnson/src
     ${PGROUTING_SOURCE_DIR}/src/apsp_warshall/src
-#    ${PGROUTING_SOURCE_DIR}/src/shooting_star/src
     ${PGROUTING_SOURCE_DIR}/src/tsp/src
     ${PGROUTING_SOURCE_DIR}/src/driving_distance/src
     ${PGROUTING_SOURCE_DIR}/src/trsp/src
@@ -216,6 +215,7 @@ endif(APPLE)
 add_library(routing_bd
     ${LIBRARY_MODE_TARGET}
     $<TARGET_OBJECTS:bd_astar>
+    $<TARGET_OBJECTS:bd_astar_bulk>
     $<TARGET_OBJECTS:bd_dijkstra>
     )
 
