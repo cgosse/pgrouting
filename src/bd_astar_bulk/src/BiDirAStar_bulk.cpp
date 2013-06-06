@@ -33,24 +33,44 @@ BiDirAStarBulk::BiDirAStarBulk(void)
 {
 }
 
+// construct the class using maxNode to get on with it
 BiDirAStarBulk::BiDirAStarBulk(int maxNode) :
 	max_node_id(maxNode), max_edge_id(-1) 
 {
 	initall(maxNode);
 }
 
+// copy constructor to use a built graph multiple times
+BiDirAStarBulk::BiDirAStarBulk(const BiDirAStarBulk &a) :
+	// copy everything that isn't dynamic here
+	m_vecPath(a.m_vecPath),
+	m_vecEdgeVector(a.m_vecEdgeVector),
+	m_mapEdgeId2Index(a.m_mapEdgeId2Index),
+	m_vecNodeVector(a.m_vecNodeVector),
+	max_node_id(a.max_node_id),
+	max_edge_id(a.max_edge_id),
+	m_lStartNodeId(a.m_lStartNodeId),
+	m_lEndNodeId(a.m_lEndNodeId),
+	m_MinCost(a.m_MinCost),
+	m_MidNode(a.m_MidNode)
+{
+	// allocate this instance's dynamic memory
+	initall(max_node_id);
+	// std::copy is supposed to be even faster than memcpy
+	std::copy(a.m_pFParent, a.m_pFParent + max_node_id + 1, m_pFParent);
+	std::copy(a.m_pRParent, a.m_pRParent + max_node_id + 1, m_pRParent);
+	std::copy(a.m_pFCost, a.m_pFCost + max_node_id + 1, m_pFCost);
+	std::copy(a.m_pRCost, a.m_pRCost + max_node_id + 1, m_pRCost);
+}
+
 
 BiDirAStarBulk::~BiDirAStarBulk(void)
 {
-	// any reason not to do this?
-	deleteall();
-}
-
-void BiDirAStarBulk::init()
-{
-	//max_edge_id = 0;
-	//max_node_id = 0;
-	
+	// do all deletions here and assume that destructor is always called
+	delete [] m_pFParent;
+	delete [] m_pRParent;
+	delete [] m_pFCost;
+	delete [] m_pRCost;
 }
 
 /*
@@ -76,25 +96,9 @@ void BiDirAStarBulk::initall(int maxNode)
 	}
 	m_MinCost = INF;
 	m_MidNode = -1;
-	// reserve space for nodes
-	// Create a dummy node for building the node structure
-	GraphNodeInfo nodeInfo;
-	nodeInfo.Connected_Edges_Index.clear();
-	nodeInfo.Connected_Nodes.clear();
-        //m_vecNodeVector.reserve(maxNode + 1);
-	m_vecNodeVector.assign(maxNode + 1, nodeInfo);
-}
 
-/*
-	Delete the allocated memories to avoid memory leak.
-*/
-
-void BiDirAStarBulk::deleteall()
-{
-	delete [] m_pFParent;
-	delete [] m_pRParent;
-	delete [] m_pFCost;
-	delete [] m_pRCost;
+	// make sure we have enough space allocated in this vector
+        m_vecNodeVector.reserve(maxNode + 1);
 }
 
 /*
@@ -371,7 +375,6 @@ int BiDirAStarBulk:: bidir_astar_bulk(unsigned int maxNode, unsigned int start_v
 	{
 		*err_msg = (char *)"Path Not Found";
 		// delete moved to the destructor
-		//deleteall();
 		return -1;
 	}
 	else 	
@@ -389,6 +392,7 @@ int BiDirAStarBulk:: bidir_astar_bulk(unsigned int maxNode, unsigned int start_v
 		m_vecPath.push_back(pelement);
 
 	}
+	// delete moved to the destructor
 	return 0;
 }
 
@@ -404,19 +408,19 @@ bool BiDirAStarBulk::construct_graph(edge_astar_t* edges, unsigned int edge_coun
 	DBG("fifth edge id now %i\n", edges[4].id);
 	DBG("last edge id now %i\n", edges[edge_count - 1].id);
 	
-	// do these with a constructor
-	//max_node_id = maxNode;
-	//max_edge_id = -1;
-
-	// allocate memory
-	//initall(maxNode);
-
-	int i;
+	register int i;
 
 	// Insert the dummy node into the node list. This acts as place holder. Also change the nodeId so that nodeId and node index in the vector are same.
 	// There may be some nodes here that does not appear in the edge list. The size of the list is upto maxNode which is equal to maximum node id.
-	// no reason that we can't fill the vector first, then assign id, though hard to say if faster
 	DBG("setting id on %i dummy nodes", maxNode + 1);
+	
+	// no reason that we can't fill the vector first, then assign id, though hard to say if faster
+	// Create a dummy node for building the node structure
+	GraphNodeInfo nodeInfo;
+	nodeInfo.Connected_Edges_Index.clear();
+	nodeInfo.Connected_Nodes.clear();
+	m_vecNodeVector.assign(maxNode + 1, nodeInfo);
+	
 	for(i = 0; i <= maxNode; ++i)
 	{
 		m_vecNodeVector.at(i).NodeID = i;

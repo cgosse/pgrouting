@@ -49,64 +49,82 @@ int bdastar_bulk_wrapper(edge_astar_t *p_edges, unsigned int edge_count, int max
 		edge_astar_t *edges = new edge_astar_t[edge_count];
 		for (int e=0; e < edge_count; ++e)
 			edges[e] = p_edges[e];
-		// routes can be a vector
+		// routes can be a vector since they're not passed around as pointers
 		std::vector<routeset_t> routes(p_routes, p_routes + route_count);
 		// instantiate our class to hold the graph, we'll copy it for each route
-		BiDirAStarBulk base(maxNode);
+		BiDirAStarBulk baseAStar(maxNode);
 
 		DBG("constructing the graph\n");
 		DBG("edges pointer %i\n", edges);
 		DBG("last edge source now %i\n", edges[edge_count - 1].source);
 		DBG("fifth edge id now %i\n", edges[4].id);
 
-		base.construct_graph(edges, edge_count, maxNode);
+		baseAStar.construct_graph(edges, edge_count, maxNode);
 		// we're done with edges now, free the memory
 		delete[] edges;
 		DBG("Constructed the graph\n");
 
 		std::vector< std::vector<path_element_t> > paths;
 		std::vector<int> rs;
+		std::vector<int> path_count_per_row;
+		std::vector<bool> routeOK;
 		int path_row_count = 0;
 
 		// then route each pair of verticies and build, we've set this to not worry about the path stuff 
+		DBG("starting the parallel section with %i threads", omp_get_num_threads() );
+#pragma omp parallel for schedule(static) num_threads(4)
 		for (int r = 0; r < route_count; ++r) {
 			DBG("starting route %i in the wrapper\n", r);
-			// make a local copy of the astar class with it's graph already built
-			//  we're using the default copy constructor here, which should work since the class is all std:: or plain types
-			//BiDirAStarBulk routeClass = base;
+			// make a thread-local copy of the astar class to use the pre-built graph
+			BiDirAStarBulk childAStar(baseAStar);
 			// fetch the source and target from the routes array
 			int source_vertex_id = routes[r].source, target_vertex_id = routes[r].target;
 			// we'll need some dummy pointers to use the same function declaration
 			// use our class copy to route an individual trip 
-			// TODO check res for each individual run
 			DBG("calling bdastar from %i to %i\n", source_vertex_id, target_vertex_id);
-			res = base.bidir_astar_bulk(maxNode, source_vertex_id, target_vertex_id, err_msg);
+			res = childAStar.bidir_astar_bulk(maxNode, source_vertex_id, target_vertex_id, err_msg);
 			DBG("and the result is %i\n", res);
 
-			// critical section
+			// critical section so that each thread can write to the output vector
+#pragma omp critical(combinepaths)
 			{
-				DBG("begin critical result aggregation for route %i\n", r);
-				// fetch the resulting graph into a vector of path vectors. 
-				paths.push_back(base.m_vecPath);
-				// keep track of the route id that this path represents
-				rs.push_back(routes[r].route_id);
-				path_row_count += base.m_vecPath.size();
+				if (res == 0)
+				{
+					DBG("begin critical result aggregation for route %i\n", r);
+					// fetch the resulting graph into a vector of path vectors. 
+					paths.push_back(childAStar.m_vecPath);
+					// keep track of the route id that this path represents
+					rs.push_back(routes[r].route_id);
+					routeOK.push_back(true);
+					path_count_per_row.push_back(childAStar.m_vecPath.size());
+					path_row_count += childAStar.m_vecPath.size();
+				} else {
+					DBG("Route %i had a problem", routes[r].route_id);
+					routeOK.push_back(false);
+				}
 			}
 		}
 		// allocate memory for and return the resulting multi-paths
 		//  we apparently don't use palloc here, since it doesn't work
-		DBG("allocating result memory for %i path rows\n", path_row_count + 1);
-		*path = (path_element_bulk_t *) malloc( (path_row_count + 1) * sizeof(path_element_bulk_t) );
+		DBG("allocating result memory for %i path rows\n", path_row_count);
+		*path = (path_element_bulk_t *) malloc( path_row_count * sizeof(path_element_bulk_t) );
 		*path_count = path_row_count;
-		DBG("path has length %i the first one has length %i for route %i\n", paths.size(), paths.at(0).size() );
+		// put the results back out into the C vector toward the db
+		int p = 0; // the output vector index
 		for (int r = 0; r < route_count; ++r) {
-			for(int i = 0; i < path_row_count; ++i) {
-				(*path)[i].vertex_id = paths.at(r).at(i).vertex_id;
-				(*path)[i].edge_id =  paths.at(r).at(i).edge_id;
-				(*path)[i].cost =  paths.at(r).at(i).cost;
-				// save the requested route id for each record, they may have been processed out of order
-				(*path)[i].route_id = routes[ rs[r] ].route_id;
+			// only return results from ok routes
+			if (! routeOK.at(r))
+				continue;
+			//DBG("pushing out the results for r %i\n",r);
+			for(int i = 0; i < path_count_per_row.at(r); ++i, ++p) {
+				//DBG("  %i, %i, %i, %0.5f\n",paths.at(r).at(i).vertex_id, paths.at(r).at(i).edge_id,paths.at(r).at(i).cost, rs.at(r));
+				(*path)[p].vertex_id = paths.at(r).at(i).vertex_id;
+				(*path)[p].edge_id =  paths.at(r).at(i).edge_id;
+				(*path)[p].cost =  paths.at(r).at(i).cost;
+				// real route id for each record, they may have been processed out of order
+				(*path)[p].route_id = rs.at(r);
 			}
+			//DBG("\nfinished the %ith route\n", r);
 		}
 
 	}

@@ -221,6 +221,10 @@ add_library(routing_bd
 
 install(TARGETS routing_bd DESTINATION ${LIBRARY_INSTALL_PATH})
 
+
+set_target_properties(routing_bd PROPERTIES COMPILE_FLAGS ${TEMP} )
+
+
 add_library(routing
     ${LIBRARY_MODE_TARGET}
     $<TARGET_OBJECTS:astar>

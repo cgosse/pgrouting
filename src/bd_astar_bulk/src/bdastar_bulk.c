@@ -36,7 +36,7 @@
 Datum bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS);
 
 #undef DEBUG
-#define DEBUG 1
+//#define DEBUG 1
 
 #ifdef DEBUG
 #define DBG(format, arg...)                     \
@@ -600,8 +600,9 @@ bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS)
       Datum *values;
       char* nulls;
 
-      values = palloc(4 * sizeof(Datum));
-      nulls = palloc(4 * sizeof(char));
+      // cost3Result has 5 fields
+      values = palloc(5 * sizeof(Datum));
+      nulls = palloc(5 * sizeof(char));
 
       values[0] = Int32GetDatum(call_cntr);
       nulls[0] = ' ';

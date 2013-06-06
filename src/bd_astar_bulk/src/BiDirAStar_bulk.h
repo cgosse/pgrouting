@@ -39,6 +39,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+// for openmp informational functions
+#include <omp.h>
 
 #include "MinHeapBulk.h"
 #include "bdastar_bulk.h"
@@ -120,7 +122,11 @@ class BiDirAStarBulk
 {
 public:
 	BiDirAStarBulk(void);
+	// allow instantiation with maxNode to allocate memory
 	BiDirAStarBulk(int);
+	// copy constructor to enable multi-threading
+	BiDirAStarBulk(const BiDirAStarBulk &a);
+	// destructor to clean up dynamic memory
 	~BiDirAStarBulk(void);
 	
 	int bidir_astar_bulk(unsigned int maxNode, unsigned int start_vertex, unsigned int end_vertex, char **err_msg);
@@ -134,10 +140,7 @@ private:
 	void rconstruct_path(int node_id);
 	bool addEdge(edge_astar_t edgeIn);
 	bool connectEdge(GraphEdgeInfo& firstEdge, GraphEdgeInfo& secondEdge, bool bIsStartNodeSame);
-	void init();
 	void initall(int maxNode);
-	void deleteall();
-	//void explore(int cur_node, double cur_cost, int dir, std::priority_queue<PDI, std::vector<PDI>, std::greater<PDI> > &que);
 	void explore(int cur_node, double cur_cost, int dir, MinHeapBulk &que);
 	double getcost(int node_id, int dir);
 	void setcost(int node_id, int dir, double c);
