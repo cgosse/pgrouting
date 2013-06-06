@@ -33,7 +33,7 @@
 
 //-------------------------------------------------------------------------
 
-Datum bidir_astar_shortest_path(PG_FUNCTION_ARGS);
+Datum bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS);
 
 #undef DEBUG
 #define DEBUG 1
@@ -215,95 +215,11 @@ fetch_edge_astar(HeapTuple *tuple, TupleDesc *tupdesc,
 }
 
 
-// break out the fetching of edges and the routing verticies into separate functions
+/*// break out the fetching of edges and the routing verticies into separate functions
 static int query_edges(char* sql, bool directed, bool has_reverse_cost, edge_astar_t **edges, 
 		int* edge_count, int* v_min_id, int* v_max_id)
 {
-  int SPIcode;
-  void *SPIplan;
-  Portal SPIportal;
-  bool moredata = TRUE;
-  int ntuples, ret = -1;
-  int total_tuples = 0;
-  register int z;
-
-  edge_astar_columns_t edge_columns = {id: -1, source: -1, target: -1,
-                       cost: -1, reverse_cost: -1,
-                       s_x: -1, s_y: -1, t_x: -1, t_y: -1};
-
-  DBG("start shortest_path_astar\n");
-
-  SPIcode = SPI_connect();
-  if (SPIcode  != SPI_OK_CONNECT) {
-      elog(ERROR, "shortest_path_astar: couldn't open a connection to SPI");
-      return -1;
-  }
-
-  SPIplan = SPI_prepare(sql, 0, NULL);
-  if (SPIplan  == NULL) {
-      elog(ERROR, "shortest_path_astar: couldn't create query plan via SPI");
-      return -1;
-  }
-
-  if ((SPIportal = SPI_cursor_open(NULL, SPIplan, NULL, NULL, true)) == NULL) {
-      elog(ERROR, "shortest_path_astar: SPI_cursor_open('%s') returns NULL",
-            sql);
-      return -1;
-  }
-
-  while (moredata == TRUE) {
-      SPI_cursor_fetch(SPIportal, TRUE, TUPLIMIT);
-
-      if (edge_columns.id == -1) {
-          if (fetch_edge_astar_columns(SPI_tuptable, &edge_columns,
-                           has_reverse_cost) == -1)
-            return finish(SPIcode, ret);
-      }
-
-      ntuples = SPI_processed;
-      total_tuples += ntuples;
-      if (*edges == NULL)
-        *edges = palloc(total_tuples * sizeof(edge_astar_t));
-      else
-        *edges = repalloc(*edges, total_tuples * sizeof(edge_astar_t));
-
-      if (*edges == NULL) {
-          elog(ERROR, "Out of memory");
-          return finish(SPIcode, ret);
-      }
-
-      if (ntuples > 0) {
-          int t;
-          SPITupleTable *tuptable = SPI_tuptable;
-          TupleDesc tupdesc = SPI_tuptable->tupdesc;
-
-          for (t = 0; t < ntuples; t++) {
-              HeapTuple tuple = tuptable->vals[t];
-	      // since edges is a pointer to a pointer, deref to get a pointer then add, and it's still a pointer
-              fetch_edge_astar(&tuple, &tupdesc, &edge_columns,
-                       *edges + total_tuples - ntuples + t);
-	      //DBG("added edge id %i\n", (*edges)[total_tuples - ntuples + t].id);
-          }
-          SPI_freetuptable(tuptable);
-      }
-      else {
-          moredata = FALSE;
-      }
-  }
-  *edge_count = total_tuples;
-  DBG("got %i edges\n", total_tuples);
-  // determine the min and max ids
-  for(z=0; z < *edge_count; ++z)
-  {
-    if((*edges)[z].source < *v_min_id) *v_min_id=(*edges)[z].source;
-    if((*edges)[z].source > *v_max_id) *v_max_id=(*edges)[z].source;
-    if((*edges)[z].target < *v_min_id) *v_min_id=(*edges)[z].target;
-    if((*edges)[z].target > *v_max_id) *v_max_id=(*edges)[z].target;
-    //DBG("%i <-> %i", *v_min_id, *v_max_id);
-  }
-
-  return finish(SPIcode, ret);
-}
+  }*/
 
 static int
 fetch_route_columns(SPITupleTable *tuptable, routeset_t *route_columns)
@@ -445,7 +361,98 @@ static int compute_shortest_path_astar_bulk(char* edge_sql, char* route_sql,
   int route_count = 0, edge_count = 0;
 
   // fetch the edges from the supplied query
-  query_edges(edge_sql, directed, has_reverse_cost, &edges, &edge_count, &v_min_id, &v_max_id);
+  //query_edges(edge_sql, directed, has_reverse_cost, &edges, &edge_count, &v_min_id, &v_max_id);
+  int SPIcode;
+  void *SPIplan;
+  Portal SPIportal;
+  bool moredata = TRUE;
+  int ntuples;
+  int total_tuples = 0;
+
+  edge_astar_columns_t edge_columns = {id: -1, source: -1, target: -1,
+                       cost: -1, reverse_cost: -1,
+                       s_x: -1, s_y: -1, t_x: -1, t_y: -1};
+
+  DBG("start shortest_path_astar\n");
+
+  SPIcode = SPI_connect();
+  if (SPIcode  != SPI_OK_CONNECT) {
+      elog(ERROR, "shortest_path_astar: couldn't open a connection to SPI");
+      return -1;
+  }
+
+  SPIplan = SPI_prepare(edge_sql, 0, NULL);
+  if (SPIplan  == NULL) {
+      elog(ERROR, "shortest_path_astar: couldn't create query plan via SPI");
+      return -1;
+  }
+
+  if ((SPIportal = SPI_cursor_open(NULL, SPIplan, NULL, NULL, true)) == NULL) {
+      elog(ERROR, "shortest_path_astar: SPI_cursor_open('%s') returns NULL",
+            edge_sql);
+      return -1;
+  }
+
+  while (moredata == TRUE) {
+      SPI_cursor_fetch(SPIportal, TRUE, TUPLIMIT);
+
+      if (edge_columns.id == -1) {
+          if (fetch_edge_astar_columns(SPI_tuptable, &edge_columns,
+                           has_reverse_cost) == -1)
+            return finish(SPIcode, ret);
+      }
+
+      ntuples = SPI_processed;
+      total_tuples += ntuples;
+      if (edges == NULL)
+        edges = palloc(total_tuples * sizeof(edge_astar_t));
+      else
+        edges = repalloc(edges, total_tuples * sizeof(edge_astar_t));
+
+      if (edges == NULL) {
+          elog(ERROR, "Out of memory");
+          return finish(SPIcode, ret);
+      }
+
+      if (ntuples > 0) {
+          int t;
+          SPITupleTable *tuptable = SPI_tuptable;
+          TupleDesc tupdesc = SPI_tuptable->tupdesc;
+
+          for (t = 0; t < ntuples; t++) {
+              HeapTuple tuple = tuptable->vals[t];
+	      // since edges is a pointer to a pointer, deref to get a pointer then add, and it's still a pointer
+              fetch_edge_astar(&tuple, &tupdesc, &edge_columns,
+                       &edges[total_tuples - ntuples + t]);
+	      //DBG("added edge id %i\n", edges[total_tuples - ntuples + t].id);
+          }
+          SPI_freetuptable(tuptable);
+      }
+      else {
+          moredata = FALSE;
+      }
+  }
+  edge_count = total_tuples;
+  DBG("got %i edges\n", total_tuples);
+  // determine the min and max ids
+  for(z=0; z < edge_count; ++z)
+  {
+    if(edges[z].source < v_min_id) v_min_id=edges[z].source;
+    if(edges[z].source > v_max_id) v_max_id=edges[z].source;
+    if(edges[z].target < v_min_id) v_min_id=edges[z].target;
+    if(edges[z].target > v_max_id) v_max_id=edges[z].target;
+    //DBG("%i <-> %i", *v_min_id, *v_max_id);
+  }
+
+  finish(SPIcode, ret);
+
+ 
+  
+  
+  
+  
+  
+  
   DBG("fetched %i edges. Min id %i, max id %i\n", edge_count, v_min_id, v_max_id);
   DBG("last edge id %i\n", edges[edge_count - 1].id);
   DBG("last edge source %i\n", edges[edge_count - 1].source);
@@ -570,7 +577,7 @@ bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS)
       DBG("Path count %i", path_count);
 
       funcctx->tuple_desc =
-            BlessTupleDesc(RelationNameGetTupleDesc("pgr_costResult"));
+            BlessTupleDesc(RelationNameGetTupleDesc("pgr_cost3Result"));
 
       MemoryContextSwitchTo(oldcontext);
   }
@@ -607,6 +614,8 @@ bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS)
       values[4] = Float8GetDatum(path[call_cntr].cost);
       nulls[4] = ' ';
 
+      DBG("should say %i %i %i %f\n", path[call_cntr].vertex_id, path[call_cntr].edge_id, path[call_cntr].route_id, path[call_cntr].cost);
+
       DBG("Heap making\n");
 
       tuple = heap_formtuple(tuple_desc, values, nulls);
@@ -621,13 +630,13 @@ bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS)
       /* clean up (this is not really necessary) */
       pfree(values);
       pfree(nulls);
-
+      DBG("trying to return next\n");
       SRF_RETURN_NEXT(funcctx, result);
   }
   else {   /* do when there is no more left */
-      DBG("Freeing path");
+      DBG("Freeing path since it was allocated upstream with malloc");
       if (path) free(path);
-
+      DBG("returning final\n");
       SRF_RETURN_DONE(funcctx);
   }
 }

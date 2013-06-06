@@ -123,8 +123,7 @@ public:
 	BiDirAStarBulk(int);
 	~BiDirAStarBulk(void);
 	
-	int bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, unsigned int maxNode, 
-			unsigned int start_vertex, unsigned int end_vertex, char **err_msg);
+	int bidir_astar_bulk(unsigned int maxNode, unsigned int start_vertex, unsigned int end_vertex, char **err_msg);
 
 	// these are public to call them early and pre-build the graph
 	std::vector <path_element_t> m_vecPath;

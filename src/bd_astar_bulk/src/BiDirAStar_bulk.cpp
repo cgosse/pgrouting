@@ -76,6 +76,13 @@ void BiDirAStarBulk::initall(int maxNode)
 	}
 	m_MinCost = INF;
 	m_MidNode = -1;
+	// reserve space for nodes
+	// Create a dummy node for building the node structure
+	GraphNodeInfo nodeInfo;
+	nodeInfo.Connected_Edges_Index.clear();
+	nodeInfo.Connected_Nodes.clear();
+        //m_vecNodeVector.reserve(maxNode + 1);
+	m_vecNodeVector.assign(maxNode + 1, nodeInfo);
 }
 
 /*
@@ -290,9 +297,7 @@ void BiDirAStarBulk::explore(int cur_node, double cur_cost, int dir, MinHeapBulk
 	node id. As we run node based exploration cost, parent etc will be based on maximam node id.
 */
 
-int BiDirAStarBulk:: bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_count, 
-		unsigned int maxNode, unsigned int start_vertex, unsigned int end_vertex, 
-		char **err_msg)
+int BiDirAStarBulk:: bidir_astar_bulk(unsigned int maxNode, unsigned int start_vertex, unsigned int end_vertex, char **err_msg)
 {
 	m_lStartNodeId = start_vertex;
 	m_lEndNodeId = end_vertex;
@@ -365,7 +370,8 @@ int BiDirAStarBulk:: bidir_astar_bulk(edge_astar_t *edges, unsigned int edge_cou
 	if(m_MidNode == -1)
 	{
 		*err_msg = (char *)"Path Not Found";
-		deleteall();
+		// delete moved to the destructor
+		//deleteall();
 		return -1;
 	}
 	else 	
@@ -406,16 +412,11 @@ bool BiDirAStarBulk::construct_graph(edge_astar_t* edges, unsigned int edge_coun
 	//initall(maxNode);
 
 	int i;
-	// Create a dummy node for building the node structure
-	GraphNodeInfo nodeInfo;
-	nodeInfo.Connected_Edges_Index.clear();
-	nodeInfo.Connected_Nodes.clear();
 
 	// Insert the dummy node into the node list. This acts as place holder. Also change the nodeId so that nodeId and node index in the vector are same.
 	// There may be some nodes here that does not appear in the edge list. The size of the list is upto maxNode which is equal to maximum node id.
 	// no reason that we can't fill the vector first, then assign id, though hard to say if faster
-	DBG("inserting %i dummy nodes", maxNode + 1);
-	m_vecNodeVector.assign(maxNode + 1, nodeInfo);
+	DBG("setting id on %i dummy nodes", maxNode + 1);
 	for(i = 0; i <= maxNode; ++i)
 	{
 		m_vecNodeVector.at(i).NodeID = i;

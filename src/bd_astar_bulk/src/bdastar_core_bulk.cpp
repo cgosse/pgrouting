@@ -36,14 +36,21 @@ using namespace std;
 
 // same idea as the basic wrapper, but takes an array of input and output vertices and returns a bulk path
 //  which has an additional value for which route is being computed
-int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNode,
-		routeset_t *routes, int route_count,
+int bdastar_bulk_wrapper(edge_astar_t *p_edges, unsigned int edge_count, int maxNode,
+		routeset_t *p_routes, int route_count,
 		bool directed, bool has_reverse_cost,
 		path_element_bulk_t **path, int *path_count, char **err_msg)
 {
 	int res = 0;
 	DBG("\n\ntrying the C++ code\n");
 	try {
+		DBG("fifth edge id now %i\n", p_edges[4].id);
+		// allocating c++ memory for the C arrays since edges at least seems to get clobbered 
+		edge_astar_t *edges = new edge_astar_t[edge_count];
+		for (int e=0; e < edge_count; ++e)
+			edges[e] = p_edges[e];
+		// routes can be a vector
+		std::vector<routeset_t> routes(p_routes, p_routes + route_count);
 		// instantiate our class to hold the graph, we'll copy it for each route
 		BiDirAStarBulk base(maxNode);
 
@@ -53,6 +60,8 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 		DBG("fifth edge id now %i\n", edges[4].id);
 
 		base.construct_graph(edges, edge_count, maxNode);
+		// we're done with edges now, free the memory
+		delete[] edges;
 		DBG("Constructed the graph\n");
 
 		std::vector< std::vector<path_element_t> > paths;
@@ -60,8 +69,7 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 		int path_row_count = 0;
 
 		// then route each pair of verticies and build, we've set this to not worry about the path stuff 
-		//for (int r = 0; r < route_count; ++r) {
-		for (int r = 0; r < 1; ++r) {
+		for (int r = 0; r < route_count; ++r) {
 			DBG("starting route %i in the wrapper\n", r);
 			// make a local copy of the astar class with it's graph already built
 			//  we're using the default copy constructor here, which should work since the class is all std:: or plain types
@@ -72,7 +80,7 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 			// use our class copy to route an individual trip 
 			// TODO check res for each individual run
 			DBG("calling bdastar from %i to %i\n", source_vertex_id, target_vertex_id);
-			res = base.bidir_astar_bulk(edges, edge_count, maxNode, source_vertex_id, target_vertex_id, err_msg);
+			res = base.bidir_astar_bulk(maxNode, source_vertex_id, target_vertex_id, err_msg);
 			DBG("and the result is %i\n", res);
 
 			// critical section
@@ -87,12 +95,12 @@ int bdastar_bulk_wrapper(edge_astar_t *edges, unsigned int edge_count, int maxNo
 		}
 		// allocate memory for and return the resulting multi-paths
 		//  we apparently don't use palloc here, since it doesn't work
-		DBG("allocating result memory for %i path rows", path_row_count + 1);
+		DBG("allocating result memory for %i path rows\n", path_row_count + 1);
 		*path = (path_element_bulk_t *) malloc( (path_row_count + 1) * sizeof(path_element_bulk_t) );
 		*path_count = path_row_count;
-
+		DBG("path has length %i the first one has length %i for route %i\n", paths.size(), paths.at(0).size() );
 		for (int r = 0; r < route_count; ++r) {
-			for(int i = 0; i < *path_count; i++) {
+			for(int i = 0; i < path_row_count; ++i) {
 				(*path)[i].vertex_id = paths.at(r).at(i).vertex_id;
 				(*path)[i].edge_id =  paths.at(r).at(i).edge_id;
 				(*path)[i].cost =  paths.at(r).at(i).cost;
