@@ -47,7 +47,7 @@
 
 #define INF 1e15
 
-#define DEBUG 
+//#define DEBUG 
 #ifdef DEBUG
 #include <stdio.h>
 static FILE *dbg;

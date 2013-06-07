@@ -56,11 +56,13 @@ BiDirAStarBulk::BiDirAStarBulk(const BiDirAStarBulk &a) :
 {
 	// allocate this instance's dynamic memory
 	initall(max_node_id);
+	/* but we don't actually want these values, they aren't used yet
 	// std::copy is supposed to be even faster than memcpy
 	std::copy(a.m_pFParent, a.m_pFParent + max_node_id + 1, m_pFParent);
 	std::copy(a.m_pRParent, a.m_pRParent + max_node_id + 1, m_pRParent);
 	std::copy(a.m_pFCost, a.m_pFCost + max_node_id + 1, m_pFCost);
 	std::copy(a.m_pRCost, a.m_pRCost + max_node_id + 1, m_pRCost);
+	*/
 }
 
 
@@ -79,8 +81,10 @@ BiDirAStarBulk::~BiDirAStarBulk(void)
 
 void BiDirAStarBulk::initall(int maxNode)
 {
+	DBG("allocated the class copy's memory\n");
 	int i;
 	m_pFParent = new PARENT_PATH[maxNode + 1];
+	DBG("allocated the class copy's memory 2\n");
 	m_pRParent = new PARENT_PATH[maxNode + 1];
 
 	m_pFCost = new double[maxNode + 1];
@@ -97,6 +101,7 @@ void BiDirAStarBulk::initall(int maxNode)
 	m_MinCost = INF;
 	m_MidNode = -1;
 
+	DBG("reserving memory for the node vector\n");
 	// make sure we have enough space allocated in this vector
         m_vecNodeVector.reserve(maxNode + 1);
 }

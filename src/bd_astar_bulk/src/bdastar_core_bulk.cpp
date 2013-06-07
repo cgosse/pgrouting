@@ -72,7 +72,7 @@ int bdastar_bulk_wrapper(edge_astar_t *p_edges, unsigned int edge_count, int max
 
 		// then route each pair of verticies and build, we've set this to not worry about the path stuff 
 		//DBG("starting the parallel section with %i threads", omp_get_num_threads() );
-//#pragma omp parallel for schedule(static) num_threads(4)
+//#pragma omp parallel for ordered 
 		for (int r = 0; r < route_count; ++r) {
 			DBG("starting route %i in the wrapper\n", r);
 			// make a thread-local copy of the astar class to use the pre-built graph
@@ -86,7 +86,7 @@ int bdastar_bulk_wrapper(edge_astar_t *p_edges, unsigned int edge_count, int max
 			DBG("and the result is %i\n", res);
 
 			// critical section so that each thread can write to the output vector
-//#pragma omp critical(combinepaths)
+//#pragma omp critical
 			{
 				if (res == 0)
 				{
