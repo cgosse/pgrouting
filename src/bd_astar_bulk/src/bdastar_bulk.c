@@ -36,7 +36,7 @@
 Datum bidir_astar_shortest_path_bulk(PG_FUNCTION_ARGS);
 
 #undef DEBUG
-//#define DEBUG 1
+#define DEBUG 1
 
 #ifdef DEBUG
 #define DBG(format, arg...)                     \
@@ -444,21 +444,18 @@ static int compute_shortest_path_astar_bulk(char* edge_sql, char* route_sql,
     //DBG("%i <-> %i", *v_min_id, *v_max_id);
   }
 
-  finish(SPIcode, ret);
+  if (finish(SPIcode, ret) != 0)
+	DBG("error disconnecting from the DB after fetching edges\n");
 
- 
-  
-  
-  
-  
-  
-  
   DBG("fetched %i edges. Min id %i, max id %i\n", edge_count, v_min_id, v_max_id);
   DBG("last edge id %i\n", edges[edge_count - 1].id);
   DBG("last edge source %i\n", edges[edge_count - 1].source);
   // fetch start and end locations from the supplied query
-  query_routes(route_sql, &routes, &route_count);
-  DBG("fetched %i routes\n", route_count);
+  if (query_routes(route_sql, &routes, &route_count) != 0);
+  	DBG("error fetching routes\n");
+  else
+  	DBG("fetched %i routes\n", route_count);
+	
   // check that the sources and targets are in the graph
   for (r=0; r < route_count; ++r) {
   	bool s_found = false, t_found = false;

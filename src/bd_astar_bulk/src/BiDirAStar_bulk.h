@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include <string.h>
 // for openmp informational functions
-#include <omp.h>
+//#include <omp.h>
 
 #include "MinHeapBulk.h"
 #include "bdastar_bulk.h"

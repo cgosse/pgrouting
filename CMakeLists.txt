@@ -221,6 +221,15 @@ add_library(routing_bd
 
 install(TARGETS routing_bd DESTINATION ${LIBRARY_INSTALL_PATH})
 
+if(APPLE)
+    # don't worry about linking since clang doesn't support openmp yet anyway
+    # if we did worry about it, it should be CMAKE_MODULE_LINKER_FLAGS, but this works
+    set_target_properties(routing_bd PROPERTIES LINK_FLAGS "${LINK_FLAGS} -openmp" )
+else(APPLE)
+    set_target_properties(routing_bd PROPERTIES LINK_FLAGS "${LINK_FLAGS} -fopenmp" )
+endif(APPLE)
+
+
 
 add_library(routing
     ${LIBRARY_MODE_TARGET}
@@ -229,7 +238,6 @@ add_library(routing
     $<TARGET_OBJECTS:kdijkstra>
     $<TARGET_OBJECTS:apsp_johnson>
     $<TARGET_OBJECTS:apsp_warshall>
-#    $<TARGET_OBJECTS:shooting_star>
     $<TARGET_OBJECTS:trsp>
     )
 
