@@ -16,27 +16,36 @@ use vars qw/*name *dir *prune/;
 
 my $VERBOSE = 0;
 my $DRYRUN = 0;
+my $DEBUG = 0;
 
 my $DBNAME = "pgr_test__db__test";
 my $DBUSER = 'postgres';
 my $DBHOST = 'localhost';
+my $DBPORT = '5432';
 
 sub Usage {
     die "Usage: test-runner.pl -pgver vpg -pgisver vpgis -psql /path/to/psql\n" .
         "       -pgver vpg          - postgresql version\n" .
+        "       -pgport port        - postgresql port to use (default: 5432)\n" .
         "       -pgisver vpgis      - postgis version\n" .
         "       -pgrver vpgr        - pgrouting version\n" .
         "       -psql /path/to/psql - optional path to psql\n" .
+        "       -v                  - verbose messages for debuging(enter twice for more)\n" .
+        "       -clean              - dropdb pgr_test__db__test\n" .
         "       -h                  - help\n";
 }
 
 print "RUNNING: test-runner.pl " . join(" ", @ARGV) . "\n";
 
 my ($vpg, $vpgis, $vpgr, $psql);
+my $clean;
 
 while (my $a = shift @ARGV) {
     if ( $a eq '-pgver') {
         $vpg   = shift @ARGV || Usage();
+    }
+    elsif ($a eq '-pgport') {
+        $DBPORT = shift @ARGV || Usage();
     }
     elsif ($a eq '-pgisver') {
         $vpgis = shift @ARGV || Usage();
@@ -52,11 +61,20 @@ while (my $a = shift @ARGV) {
     elsif ($a =~ /^-h/) {
         Usage();
     }
+    elsif ($a =~ /^-clean/) {
+        $clean = 1;;
+    }
+    elsif ($a =~ /^-v/i) {
+        $VERBOSE = 1 if $DEBUG;
+        $DEBUG = 1;
+    }
     else {
         warn "Error: unknown option '$a'\n";
         Usage();
     }
 }
+
+mysystem("dropdb -U $DBUSER -h $DBHOST -p $DBPORT $DBNAME") if $clean;
 
 %main::tests = ();
 my @cfgs = ();
@@ -135,11 +153,11 @@ sub run_test {
 
     $res{comment} = $t->{comment} if $t->{comment};
     for my $x (@{$t->{data}}) {
-        mysystem("$psql -U $DBUSER -h $DBHOST -A -t -q -f '$dir/$x' $DBNAME >> $TMP2 2>\&1 ");
+        mysystem("$psql -U $DBUSER -h $DBHOST -p $DBPORT -A -t -q -f '$dir/$x' $DBNAME >> $TMP2 2>\&1 ");
     }
 
     for my $x (@{$t->{tests}}) {
-        mysystem("$psql -U $DBUSER -h $DBHOST -A -t -q -f '$dir/$x.test' $DBNAME > $TMP 2>\&1 ");
+        mysystem("$psql -U $DBUSER -h $DBHOST -p $DBPORT -A -t -q -f '$dir/$x.test' $DBNAME > $TMP 2>\&1 ");
         # use diff -w to ignore white space differences like \r vs \r\n
         my $r = `diff -w '$dir/$x.rest' $TMP`;
         $r =~ s/^\s*|\s*$//g;
@@ -172,17 +190,23 @@ sub createTestDB {
     my $dbver = getServerVersion();
     my $dbshare = getSharePath($dbver);
 
+    if ($DEBUG) {
+        print "-- DBVERSION: $dbver\n";
+        print "-- DBSHARE: $dbshare\n";
+    }
+
     # first create a database with postgis installed in it
     if (version_greater_eq($dbver, '9.1') &&
             -f "$dbshare/extension/postgis.control") {
-        mysystem("createdb -U $DBUSER -h $DBHOST $DBNAME");
+        mysystem("createdb -U $DBUSER -h $DBHOST -p $DBPORT $DBNAME");
         die "ERROR: Failed to create database '$DBNAME'!\n"
             unless dbExists($DBNAME);
         my $myver = '';
         if ($vpgis) {
             $myver = " VERSION '$vpgis'";
         }
-        mysystem("$psql -U $DBUSER -h $DBHOST -c \"create extension postgis $myver\" $DBNAME");
+        print "-- Trying to install postgis extension $myver\n" if $DEBUG;
+        mysystem("$psql -U $DBUSER -h $DBHOST -p $DBPORT -c \"create extension postgis $myver\" $DBNAME");
     }
     else {
         if ($vpgis && dbExists("template_postgis_$vpgis")) {
@@ -194,34 +218,51 @@ sub createTestDB {
         else {
             die "ERROR: Could not find an appropriate template_postgis database!\n";
         }
-        mysystem("createdb -U $DBUSER -h $DBHOST -T $template $DBNAME");
+        print "-- Trying to install postgis from $template\n" if $DEBUG;
+        mysystem("createdb -U $DBUSER -h $DBHOST -p $DBPORT -T $template $DBNAME");
+        sleep(2);
         die "ERROR: Failed to create database '$DBNAME'!\n"
             if ! dbExists($DBNAME);
     }
 
     # next we install pgrouting into the new database
     if (version_greater_eq($dbver, '9.1') &&
-            -f "$dbshare/extension/pgrouting.control") {
+            -f "$dbshare/extension/postgis.control") {
         my $myver = '';
         if ($vpgr) {
             $myver = " VERSION '$vpgr'";
         }
-        mysystem("$psql -U $DBUSER -h $DBHOST -c \"create extension pgrouting $myver\" $DBNAME");
+        print "-- Trying to install pgrouting extension $myver\n" if $DEBUG;
+        mysystem("$psql -U $DBUSER -h $DBHOST -p $DBPORT -c \"create extension pgrouting $myver\" $DBNAME");
     }
     elsif ($vpgr && -f "$dbshare/extension/pgrouting--$vpgr.sql") {
-        mysystem("$psql -U $DBUSER -h $DBHOST -f '$dbshare/extension/pgrouting--$vpgr.sql'");
+        print "-- Trying to install pgrouting from '$dbshare/extension/pgrouting--$vpgr.sql'\n" if $DEBUG;
+        mysystem("$psql -U $DBUSER -h $DBHOST -p $DBPORT -f '$dbshare/extension/pgrouting--$vpgr.sql' $DBNAME");
     }
     else {
-        die "ERROR: failed to install pgrouting into the database!\n";
+        my $find = `find "$dbshare/contrib" -name pgrouting.sql | sort -r -n `;
+        my @found = split(/\n/, $find);
+        my $file = shift @found;
+        if ($file && length($file)) {
+            print "-- Trying to install pgrouting from '$file'\n" if $DEBUG;
+            mysystem("$psql -U $DBUSER -h $DBHOST -p $DBPORT -f '$file' $DBNAME");
+        }
+        else {
+            mysystem("ls -alR $dbshare") if $DEBUG;
+            die "ERROR: failed to install pgrouting into the database!\n";
+        }
     }
-    my $pgrv = `$psql -U $DBUSER -h $DBHOST -c \"select pgr_version()\" $DBNAME`;
+
+    # now verify that we have pgrouting installed
+
+    my $pgrv = `$psql -U $DBUSER -h $DBHOST -p $DBPORT -c "select pgr_version()" $DBNAME`;
     die "ERROR: failed to install pgrouting into the database!\n"
         unless $pgrv;
 
 }
 
 sub dropTestDB {
-    mysystem("dropdb -U $DBUSER -h $DBHOST $DBNAME");
+    mysystem("dropdb -U $DBUSER -h $DBHOST -p $DBPORT $DBNAME");
 }
 
 sub version_greater_eq {
@@ -248,8 +289,8 @@ sub version_greater_eq {
 
 
 sub getServerVersion {
-    my $v = `$psql -U $DBUSER -h $DBHOST -q -t -c "select version()" postgres`;
-    print "$psql -U $DBUSER -h $DBHOST -q -t -c \"select version()\" postgres\n    # RETURNED: $v\n" if $VERBOSE;
+    my $v = `$psql -U $DBUSER -h $DBHOST -p $DBPORT -q -t -c "select version()" postgres`;
+    print "$psql -U $DBUSER -h $DBHOST -p $DBPORT -q -t -c \"select version()\" postgres\n    # RETURNED: $v\n" if $VERBOSE;
     if ($v =~ m/PostgreSQL (\d+(\.\d+)?(\.\d+)?)/) {
         print "    # Got ($1)\n" if $VERBOSE;
         return $1;
@@ -260,7 +301,7 @@ sub getServerVersion {
 sub dbExists {
     my $dbname = shift;
 
-    my $isdb = `$psql -U $DBUSER -h $DBHOST -l | grep $dbname`;
+    my $isdb = `$psql -U $DBUSER -h $DBHOST -p $DBPORT -l | grep $dbname`;
     $isdb =~ s/^\s*|\s*$//g;
     return length($isdb);
 }
@@ -272,6 +313,12 @@ sub findPsql {
     return length($psql)?$psql:undef;
 }
 
+# getSharePath is complicated by the fact that on Debian we can have multiple
+# versions installed in a cluster. So we get the DB version by connectiong
+# to the port for the server we want. Then we get the share path for the 
+# newest version od pg installed on the cluster. And finally we change the
+# in the path to the version of the server.
+
 sub getSharePath {
     my $pg = shift;
 
@@ -281,7 +328,8 @@ sub getSharePath {
     print "which pg_config = $pg_config\n" if $VERBOSE;
     if (length($pg_config)) {
         $share = `$pg_config --sharedir`;
-        $share  =~ s/^\s*|\s*$//g;
+        $share =~ s/^\s*|\s*$//g;
+        $share =~ s/(\d+(\.\d+)?)$/$pg/;
         if (length($share) && -d $share) {
             return $share;
         }
